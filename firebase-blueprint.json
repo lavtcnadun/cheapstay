@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "Stay": {
+      "title": "Stay",
+      "description": "An accommodation listing.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the stay" },
+        "location": { "type": "string", "description": "City and country" },
+        "price": { "type": "number", "description": "Price per night" },
+        "rating": { "type": "number", "description": "Average rating" },
+        "reviews": { "type": "number", "description": "Number of reviews" },
+        "image": { "type": "string", "description": "URL of the property image" },
+        "mediaUrl": { "type": "string", "description": "URL of the property video or high-res image" },
+        "mediaType": { "type": "string", "enum": ["image", "video"], "description": "Type of media" },
+        "type": { "type": "string", "enum": ["Hotel", "Hostel", "Apartment", "Guesthouse"], "description": "Type of accommodation" },
+        "amenities": { "type": "array", "items": { "type": "string" }, "description": "List of amenities" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "authorId": { "type": "string", "description": "UID of the user who posted this" },
+        "authorName": { "type": "string", "description": "Name of the author" },
+        "approved": { "type": "boolean", "description": "Whether the stay is approved by admin" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the stay was added" }
+      },
+      "required": ["name", "location", "price", "type", "image", "authorId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and roles.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "User's email" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role" }
+      },
+      "required": ["email", "role"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global application settings.",
+      "type": "object",
+      "properties": {
+        "heroImage": { "type": "string", "description": "URL of the hero image" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the settings were last updated" }
+      },
+      "required": ["heroImage"]
+    }
+  },
+  "firestore": {
+    "/stays/{stayId}": {
+      "schema": "Stay",
+      "description": "Collection of accommodation listings."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles."
+    },
+    "/settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Global application settings."
+    }
+  }
+}

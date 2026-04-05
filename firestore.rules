@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: stays
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - location: string (required, 1-100 chars)
+    //   - price: number (required, positive)
+    //   - rating: number (optional, 0-5)
+    //   - reviews: number (optional, >= 0)
+    //   - image: string (required, valid URL)
+    //   - type: string (required, enum: Hotel, Hostel, Apartment, Guesthouse)
+    //   - amenities: list (optional, max 20 items)
+    //   - description: string (optional, max 2000 chars)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (required, enum: admin, user)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "nadunrosh@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    function isValidStay(data) {
+      return data.keys().hasAll(['name', 'location', 'price', 'type', 'image', 'createdAt', 'authorId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.location is string && data.location.size() > 0 && data.location.size() <= 100 &&
+             data.price is number && data.price > 0 &&
+             data.type in ['Hotel', 'Hostel', 'Apartment', 'Guesthouse'] &&
+             data.image is string && data.image.matches("^https?://.*") &&
+             data.authorId is string &&
+             data.createdAt is timestamp &&
+             (!('isPaid' in data) || data.isPaid is bool);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role']) &&
+             data.email is string &&
+             data.role in ['admin', 'user'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /stays/{stayId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                      isValidStay(request.resource.data) && 
+                      request.resource.data.authorId == request.auth.uid &&
+                      request.resource.data.approved == false; // Users cannot approve their own posts
+      allow update: if isAdmin() || 
+                    (isAuthenticated() && 
+                     resource.data.authorId == request.auth.uid && 
+                     isValidStay(request.resource.data) &&
+                     request.resource.data.approved == resource.data.approved); // Users cannot change approval status
+      allow delete: if isAdmin() || 
+                    (isAuthenticated() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isAdmin() && isValidUser(request.resource.data);
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

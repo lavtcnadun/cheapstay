@@ -1,0 +1,5 @@
+{
+  "name": "CheapStay",
+  "description": "Find the best budget-friendly accommodations worldwide with AI-powered deal insights.",
+  "requestFramePermissions": ["geolocation"]
+}
