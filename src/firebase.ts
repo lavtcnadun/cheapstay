@@ -2,24 +2,32 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocFromServer, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import firebaseConfigLocal from '../firebase-applet-config.json' assert { type: 'json' };
+import firebaseConfigLocal from '../firebase-applet-config.json';
 
 // Use environment variables if available (for production), otherwise fallback to the local config file
 const firebaseConfig: any = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigLocal?.apiKey || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigLocal?.authDomain || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigLocal?.projectId || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigLocal?.storageBucket || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigLocal?.messagingSenderId || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigLocal?.appId || '',
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigLocal?.firestoreDatabaseId || ''
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (firebaseConfigLocal && firebaseConfigLocal.apiKey) || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (firebaseConfigLocal && firebaseConfigLocal.authDomain) || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || (firebaseConfigLocal && firebaseConfigLocal.projectId) || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (firebaseConfigLocal && firebaseConfigLocal.storageBucket) || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || (firebaseConfigLocal && firebaseConfigLocal.messagingSenderId) || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || (firebaseConfigLocal && firebaseConfigLocal.appId) || '',
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || (firebaseConfigLocal && firebaseConfigLocal.firestoreDatabaseId) || ''
 };
 
 if (!firebaseConfig.apiKey) {
   console.warn("Firebase configuration is missing! Deployment might show a white screen if keys are not set as environment variables.");
 }
 
-const app = initializeApp(firebaseConfig);
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (error) {
+  console.error("Firebase initialization failed:", error);
+  // Default fallback to prevent undefined app if possible, or handle gracefully in hooks
+  app = { options: {} } as any; 
+}
+
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
