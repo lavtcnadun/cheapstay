@@ -25,6 +25,16 @@ export interface Stay {
   createdAt?: any;
 }
 
+export interface Booking {
+  id: string;
+  stayId: string;
+  userId: string;
+  userName: string;
+  stayName: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  createdAt: any;
+}
+
 export const MOCK_STAYS: Stay[] = [
   {
     id: '1',

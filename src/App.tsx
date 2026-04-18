@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, MessageSquare, Send, Sparkles, MapPin, Star, Info, Lock, LogOut, User as UserIcon, Plus, Loader2 } from 'lucide-react';
+import { Search, X, MessageSquare, Send, Sparkles, MapPin, Star, Info, Lock, LogOut, User as UserIcon, Plus, Loader2, CheckCircle } from 'lucide-react';
 import { Stay, MOCK_STAYS } from './types';
 import { StayCard } from './components/StayCard';
 import { AdminPanel } from './components/AdminPanel';
@@ -9,7 +9,7 @@ import { getTravelAdvice } from './services/geminiService';
 import { 
   auth, db, collection, onSnapshot, query, orderBy, 
   signInWithPopup, googleProvider, signOut, onAuthStateChanged, User, doc,
-  OperationType, handleFirestoreError
+  OperationType, handleFirestoreError, addDoc, serverTimestamp
 } from './firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -105,6 +105,35 @@ export default function App() {
       setPropertyFormOpen(false);
     } catch (error) {
       console.error("Logout failed", error);
+    }
+  };
+
+  const [bookingLoading, setBookingLoading] = React.useState(false);
+  const [bookingSuccess, setBookingSuccess] = React.useState(false);
+
+  const handleBookStay = async (stay: Stay) => {
+    if (!user) {
+      await handleLogin();
+      return;
+    }
+
+    setBookingLoading(true);
+    try {
+      await addDoc(collection(db, 'bookings'), {
+        stayId: stay.id,
+        userId: user.uid,
+        userName: user.displayName || 'Guest User',
+        stayName: stay.name,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      setBookingSuccess(true);
+      setTimeout(() => setBookingSuccess(false), 3000);
+    } catch (error) {
+      console.error("Booking failed", error);
+      alert("Booking failed. Please try again.");
+    } finally {
+      setBookingLoading(false);
     }
   };
 
@@ -450,6 +479,7 @@ export default function App() {
         {userDashboardOpen && user && (
           <UserDashboard 
             userStays={firestoreStays.filter(s => s.authorId === user.uid)}
+            userId={user.uid}
             onClose={() => setUserDashboardOpen(false)}
             onAddProperty={() => {
               setEditingStay(null);
@@ -561,8 +591,25 @@ export default function App() {
                 </div>
 
                 <div className="pt-6 border-t border-slate-100 flex gap-4">
-                  <button className="flex-grow py-4 bg-brand-500 text-white font-bold rounded-2xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
-                    Book Now
+                  <button 
+                    onClick={() => handleBookStay(selectedStay)}
+                    disabled={bookingLoading || bookingSuccess}
+                    className={`flex-grow py-4 font-bold rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2 ${
+                      bookingSuccess 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-brand-500 text-white hover:bg-brand-600 shadow-brand-500/20'
+                    } disabled:opacity-75`}
+                  >
+                    {bookingLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : bookingSuccess ? (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Booking Requested!
+                      </>
+                    ) : (
+                      'Book Now'
+                    )}
                   </button>
                   <button className="p-4 bg-slate-100 text-slate-900 rounded-2xl hover:bg-slate-200 transition-colors">
                     <Info className="w-6 h-6" />

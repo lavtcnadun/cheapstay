@@ -140,6 +140,26 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ onClose, initialData
     );
   }
 
+  const COMMON_AMENITIES = [
+    'WiFi', 'Kitchen', 'Air Conditioning', 'Pool', 'Free Parking', 
+    'Breakfast', 'TV', 'Gym', 'Pet Friendly', 'First Aid Kit', 'Sea View', 'Mountain View'
+  ];
+
+  const handleToggleAmenity = (amenity: string) => {
+    const current = formData.amenities.split(',').map(s => s.trim()).filter(Boolean);
+    if (current.includes(amenity)) {
+      setFormData({
+        ...formData,
+        amenities: current.filter(a => a !== amenity).join(', ')
+      });
+    } else {
+      setFormData({
+        ...formData,
+        amenities: [...current, amenity].join(', ')
+      });
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <motion.div 
@@ -264,13 +284,32 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ onClose, initialData
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amenities (comma separated)</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Amenities</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {COMMON_AMENITIES.map(amenity => {
+                  const isSelected = formData.amenities.split(',').map(s => s.trim()).includes(amenity);
+                  return (
+                    <button
+                      key={amenity}
+                      type="button"
+                      onClick={() => handleToggleAmenity(amenity)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        isSelected 
+                          ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' 
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {amenity}
+                    </button>
+                  );
+                })}
+              </div>
               <input 
                 type="text" 
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 text-xs"
                 value={formData.amenities}
                 onChange={e => setFormData({...formData, amenities: e.target.value})}
-                placeholder="WiFi, Kitchen, Pool, AC..."
+                placeholder="Or type other amenities (comma separated)..."
               />
             </div>
 

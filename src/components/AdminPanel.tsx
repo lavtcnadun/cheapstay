@@ -1,7 +1,7 @@
 import React from 'react';
-import { X, Plus, Trash2, Edit2, Save, Image as ImageIcon, MapPin, Coins, Star, Type, CheckCircle, Info, Settings, Loader2, Upload, Clock, LayoutDashboard, TrendingUp, Users, DollarSign } from 'lucide-react';
-import { Stay } from '../types';
-import { db, collection, addDoc, updateDoc, deleteDoc, doc, OperationType, handleFirestoreError, setDoc, onSnapshot, storage, ref, uploadBytes, getDownloadURL } from '../firebase';
+import { X, Plus, Trash2, Edit2, Save, Image as ImageIcon, MapPin, Coins, Star, Type, CheckCircle, Info, Settings, Loader2, Upload, Clock, LayoutDashboard, TrendingUp, Users, DollarSign, Calendar, Check } from 'lucide-react';
+import { Stay, Booking } from '../types';
+import { db, collection, addDoc, updateDoc, deleteDoc, doc, OperationType, handleFirestoreError, setDoc, onSnapshot, storage, ref, uploadBytes, getDownloadURL, query, orderBy } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminPanelProps {
@@ -13,8 +13,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stays, onClose }) => {
   const [isAdding, setIsAdding] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState<'all' | 'pending' | 'approved' | 'expired'>('all');
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'stays' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'stays' | 'bookings' | 'settings'>('dashboard');
   const [heroImageUrl, setHeroImageUrl] = React.useState('');
+  const [bookings, setBookings] = React.useState<Booking[]>([]);
+  const [loadingBookings, setLoadingBookings] = React.useState(true);
   const [heroFile, setHeroFile] = React.useState<File | null>(null);
   const [updatingHero, setUpdatingHero] = React.useState(false);
   const [formData, setFormData] = React.useState<Partial<Stay>>({
@@ -37,6 +39,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stays, onClose }) => {
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/hero');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Booking[];
+      setBookings(data);
+      setLoadingBookings(false);
     });
     return () => unsubscribe();
   }, []);
@@ -131,6 +143,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stays, onClose }) => {
     }
   };
 
+  const handleUpdateBookingStatus = async (id: string, status: string) => {
+    const path = 'bookings';
+    try {
+      await updateDoc(doc(db, path, id), { status });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     const path = 'stays';
     if (!confirm('Are you sure you want to delete this stay?')) return;
@@ -192,6 +213,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stays, onClose }) => {
                 className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'stays' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Stays
+              </button>
+              <button 
+                onClick={() => setActiveTab('bookings')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'bookings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Bookings
               </button>
               <button 
                 onClick={() => setActiveTab('settings')}
@@ -343,16 +370,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stays, onClose }) => {
                         <p className="text-[10px] text-slate-500">Check pending approvals</p>
                       </button>
                       <button 
-                        onClick={() => { setActiveTab('stays'); setFilter('expired'); }}
+                        onClick={() => setActiveTab('bookings')}
                         className="p-4 bg-white rounded-2xl border border-slate-100 hover:border-brand-500 transition-all text-left group"
                       >
-                        <Coins className="w-6 h-6 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-sm font-bold text-slate-900">Manage Payments</p>
-                        <p className="text-[10px] text-slate-500">Update payment status</p>
+                        <Calendar className="w-6 h-6 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-sm font-bold text-slate-900">Bookings</p>
+                        <p className="text-[10px] text-slate-500">Manage {bookings.filter(b => b.status === 'pending').length} pending</p>
                       </button>
                     </div>
                   </div>
                 </div>
+              </motion.div>
+            ) : activeTab === 'bookings' ? (
+              <motion.div 
+                key="bookings"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                {bookings.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">No bookings found.</div>
+                ) : (
+                  bookings.map(booking => (
+                    <div key={booking.id} className="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-2xl">
+                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                        <Calendar className="w-6 h-6 text-slate-400" />
+                      </div>
+                      <div className="flex-grow">
+                        <h4 className="font-bold text-slate-900">{booking.stayName}</h4>
+                        <p className="text-xs text-slate-500">By {booking.userName}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {booking.createdAt?.toDate ? booking.createdAt.toDate().toLocaleString() : 'Recent'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
+                          booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 
+                          booking.status === 'cancelled' ? 'bg-red-100 text-red-700' : 
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {booking.status}
+                        </span>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => handleUpdateBookingStatus(booking.id, 'confirmed')}
+                            className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Confirm"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleUpdateBookingStatus(booking.id, 'cancelled')}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </motion.div>
             ) : activeTab === 'settings' ? (
               <motion.div 

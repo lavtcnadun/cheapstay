@@ -69,6 +69,16 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
+    function isValidBooking(data) {
+      return data.keys().hasAll(['stayId', 'userId', 'userName', 'stayName', 'status', 'createdAt']) &&
+             data.stayId is string &&
+             data.userId is string &&
+             data.userName is string &&
+             data.stayName is string &&
+             data.status in ['pending', 'confirmed', 'cancelled'] &&
+             data.createdAt is timestamp;
+    }
+
     match /stays/{stayId} {
       allow read: if true;
       allow create: if isAuthenticated() && 
@@ -87,6 +97,14 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create, update: if isAdmin() && isValidUser(request.resource.data);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid && 
+                      isValidBooking(request.resource.data);
+      allow update, delete: if isAdmin();
     }
 
     match /settings/{settingId} {
